@@ -25,6 +25,13 @@ Style Notes
 
 -->
 
+# 3.0.11
+
+## Tool Updates
+
+* Added OpenSTA patch by [@smunaut](https://github.com/smunaut) to fix writing
+  power pins in Verilog netlists.
+
 # 3.0.10
 
 ## Steps
