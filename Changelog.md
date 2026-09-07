@@ -25,6 +25,42 @@ Style Notes
 
 -->
 
+# 3.0.14
+
+## Steps
+
+* `Odb.*`
+  * Fixed steps not loading `PAD_LIBS`.
+
+* `OpenROAD.*`
+  * Fixed a crash when `PAD_LIBS` is set to a non-None value.
+
+* `Yosys.*`
+  * Fixed steps not loading `PAD_LIBS`.
+  
+## Misc. Enhancements/Bugfixes
+
+* `openlane.common`
+  * `Toolbox.get_timing_files_categorized` now includes any corner-appropriate
+    `PAD_LIBS`.
+
+# 3.0.13
+
+## Steps
+
+* `OpenROAD.*`
+
+  * Added support for OpenSTA 3.1 in a backwards-compatible manner (Thanks,
+    [@jalcim](https://github.com/jalcim)!)
+
+# 3.0.12
+
+## Steps
+
+* `Odb.CheckMacroAntennaProperties`
+
+  * Fixed an issue where the report would always return once the first macro had been checked.
+
 # 3.0.11
 
 ## Tool Updates
