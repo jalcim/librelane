@@ -261,8 +261,12 @@ class LVS(NetgenStep):
                 file=f,
             )
         views_updates, metrics_updates = super().run(state_in, **kwargs)
-        stats_string = open(stats_file_json).read()
-        lvs_metrics = get_metrics(json.loads(stats_string, parse_float=Decimal))
+        # netgen prints the name of an unnamed proxy pin from uninitialized
+        # memory: control characters, or bytes that are not valid UTF-8.
+        stats_string = open(stats_file_json, errors="replace").read()
+        lvs_metrics = get_metrics(
+            json.loads(stats_string, parse_float=Decimal, strict=False)
+        )
         metrics_updates.update(lvs_metrics)
 
         return (views_updates, metrics_updates)
