@@ -40,7 +40,7 @@ if { [namespace exists ::ord] } {
     # Internal API- brittle
     if { [grt::have_routes] } {
         estimate_parasitics -global_routing
-    } elseif { [est::check_corner_wire_cap] } {
+    } elseif { [est::check_corner_wire_caps] } {
         estimate_parasitics -placement
     }
 } else {

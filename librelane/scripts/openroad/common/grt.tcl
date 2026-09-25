@@ -27,4 +27,4 @@ append_if_flag arg_list GRT_ALLOW_CONGESTION -allow_congestion
 
 log_cmd global_route {*}$arg_list
 
-write_guide $::env(STEP_DIR)/after_grt.guide
+write_guides $::env(STEP_DIR)/after_grt.guide
