@@ -632,7 +632,7 @@ if { [namespace exists utl] } {
     }
     proc write_metric_int {metric value} {
         puts "Writing metric $metric: $value"
-        utl::metric_int $metric $value
+        utl::metric_integer $metric $value
     }
     proc write_metric_num {metric value} {
         puts "Writing metric $metric: $value"
