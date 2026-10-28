@@ -29,6 +29,10 @@ def test_odbpy_steps_name_their_metrics_file_to_the_script():
 
 
 def test_odbpy_scripts_flush_their_metrics_before_exiting():
+    # the reader creates the design after OpenROAD registered its -metrics
+    # sink, and metrics then go to a logger without it: the sink is opened
+    # again once the reader exists, then flushed at the end
     reader = read("scripts", "odbpy", "reader.py")
+    opened = reader.index("utl.open_metrics(metrics_out)")
     flush = reader.index("utl.close_metrics(metrics_out)")
-    assert reader.index("function(**kwargs)") < flush
+    assert reader.index("OdbReader(input_db") < opened < reader.index("function(**kwargs)") < flush
