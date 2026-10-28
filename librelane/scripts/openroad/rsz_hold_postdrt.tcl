@@ -151,12 +151,19 @@ if { [llength $repaired] == 0 } {
         }
     }
     source $::env(SCRIPTS_DIR)/openroad/common/dpl_cell_pad.tcl
-    log_cmd detailed_placement -incremental\
-        -max_displacement [subst { $::env(PL_MAX_DISPLACEMENT_X) $::env(PL_MAX_DISPLACEMENT_Y) }]
-    log_cmd global_route -end_incremental
+    set displacement [subst { $::env(PL_MAX_DISPLACEMENT_X) $::env(PL_MAX_DISPLACEMENT_Y) }]
+    log_cmd detailed_placement -incremental -max_displacement $displacement
     foreach inst $locked {
         $inst setPlacementStatus PLACED
     }
+    # In a dense design the held cells may leave no room for the buffers: the
+    # placement is then redone with every cell free, the global router still
+    # listening, at the price of rerouting the nets of the cells it moves.
+    if { [catch { check_placement }] } {
+        puts "\[WARNING\] Buffers left illegal with unchanged cells held: placement redone with every cell free."
+        log_cmd detailed_placement -incremental -max_displacement $displacement
+    }
+    log_cmd global_route -end_incremental
     check_placement -verbose
 
     set changed [lln_changed_instances $block $snapshot]
