@@ -92,7 +92,36 @@ if { [info exists ::env(CTS_SKIP_NETS)] } {
     log_cmd set_cts_config -skip_nets $::env(CTS_SKIP_NETS)
 }
 
+# Clock input pins kept out of CTS and of its latency balancing (CTS_DETACHED_PINS): each is detached from its net
+# while the trees are built, then reconnected to that same net, which is still the clock root net. A non-register
+# load on a clock net otherwise becomes a macro sink that the latency balancer delays up to the register latency,
+# even when its output net is skipped or carries its own generated clock.
+set detached_pins [list]
+if { [info exists ::env(CTS_DETACHED_PINS)] } {
+    foreach pin_name $::env(CTS_DETACHED_PINS) {
+        set iterm [$::block findITerm $pin_name]
+        if { $iterm == "NULL" } {
+            puts stderr "\[ERROR\] CTS_DETACHED_PINS: pin '$pin_name' not found."
+            exit 1
+        }
+        set net [$iterm getNet]
+        if { $net == "NULL" } {
+            puts stderr "\[ERROR\] CTS_DETACHED_PINS: pin '$pin_name' is not connected."
+            exit 1
+        }
+        puts "\[INFO\] Detaching '$pin_name' from '[$net getName]' for clock tree synthesis…"
+        $iterm disconnect
+        lappend detached_pins [list $pin_name $iterm $net]
+    }
+}
+
 log_cmd clock_tree_synthesis {*}$arg_list
+
+foreach detached $detached_pins {
+    lassign $detached pin_name iterm net
+    $iterm connect $net
+    puts "\[INFO\] Reconnected '$pin_name' to '[$net getName]'."
+}
 
 set_propagated_clock [all_clocks]
 
