@@ -96,6 +96,10 @@ class OdbpyStep(Step):
         env["PYTHONPATH"] = ":".join(
             (env.get("PYTHONPATH", ""), os.path.join(get_script_dir(), "odbpy"))
         )
+        # OpenROAD in python mode never finalizes its logger: the script
+        # flushes the -metrics file itself, by this name
+        metrics_path = os.path.join(self.step_dir, "or_metrics_out.json")
+        env["_LLN_METRICS_OUT"] = metrics_path
         check = False
         if "check" in kwargs:
             check = kwargs.pop("check")

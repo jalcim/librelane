@@ -15,6 +15,7 @@
 import odb
 from openroad import Tech, Design
 
+import os
 import re
 import sys
 import json
@@ -223,6 +224,14 @@ def click_odb(function):
         for format, path in outputs:
             fn = write_fn[format]
             fn(reader, path)
+
+        # OpenROAD in python mode never finalizes its logger, which leaves the
+        # -metrics file unwritten: flush it by the name the step gives
+        metrics_out = os.environ.get("_LLN_METRICS_OUT")
+        if metrics_out is not None:
+            import utl
+
+            utl.close_metrics(metrics_out)
 
     for format in write_fn:
         wrapper = click.option(
