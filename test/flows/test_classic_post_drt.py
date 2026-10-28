@@ -77,10 +77,11 @@ def test_post_drt_hold_repair_leaves_nets_with_a_rule_alone():
     assert "getNonDefaultRule" in script
 
 
-def test_post_drt_hold_repair_keeps_legal_cells_as_they_are():
-    # incremental detailed placement resets mirrored orientations, which would
-    # rip up the nets of every flipped cell: it only runs when the repair
-    # changed something, and unmoved cells get their orientation back
+def test_post_drt_hold_repair_only_legalizes_what_it_changed():
+    # incremental detailed placement resets mirrored orientations and pushes
+    # neighbours, which would rip up their nets: every unchanged instance is
+    # made FIRM while it runs, and the global router listens before it, so
+    # that the moved buffers get guides that reach their new pins (DRT-0218)
     from librelane.common import get_script_dir
 
     with open(
@@ -88,10 +89,10 @@ def test_post_drt_hold_repair_keeps_legal_cells_as_they_are():
         encoding="utf8",
     ) as f:
         script = f.read()
-    assert "lln_restore_orientations" in script
+    guard = script.index("if { [llength $repaired] == 0 }")
+    lock = script.index("setPlacementStatus FIRM")
+    start = script.index("log_cmd global_route -start_incremental")
     placement = script.index("detailed_placement -incremental")
-    assert script.index("if { [llength $repaired] == 0 }") < placement
-    assert placement < script.index("lln_restore_orientations $block $snapshot")
-    assert script.index("lln_restore_orientations $block $snapshot") < script.index(
-        "log_cmd global_route -start_incremental"
-    )
+    end = script.index("log_cmd global_route -end_incremental")
+    unlock = script.index("setPlacementStatus PLACED")
+    assert guard < lock < start < placement < end < unlock
