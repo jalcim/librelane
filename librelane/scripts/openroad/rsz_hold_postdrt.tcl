@@ -44,27 +44,6 @@ proc lln_instance_key {inst} {
     return [list {*}[$inst getLocation] [$inst getOrient] [[$inst getMaster] getName]]
 }
 
-proc lln_restore_orientations {block snapshot} {
-    # Gives back its orientation to every cell left at its place with its
-    # master, as detailed placement resets mirrored orientations.
-    set restored 0
-    foreach inst [$block getInsts] {
-        set name [$inst getName]
-        if { ![dict exists $snapshot $name] } {
-            continue
-        }
-        lassign [dict get $snapshot $name] x y orient master
-        lassign [$inst getLocation] now_x now_y
-        if { $now_x == $x && $now_y == $y && [[$inst getMaster] getName] eq $master
-             && [$inst getOrient] ne $orient } {
-            $inst setOrient $orient
-            $inst setLocation $x $y
-            incr restored
-        }
-    }
-    return $restored
-}
-
 proc lln_instance_snapshot {block} {
     set snapshot [dict create]
     foreach inst [$block getInsts] {
@@ -142,21 +121,26 @@ set dirty [list]
 if { [llength $repaired] == 0 } {
     puts "\[INFO\] The repair changed no instance: placement and routing are left as they are."
 } else {
-    # Legalize the inserted buffers incrementally. Detailed placement resets
-    # the mirrored orientation of cells it does not move, which would rip up
-    # their nets: unmoved cells get their orientation back before the global
-    # router starts listening.
-    source $::env(SCRIPTS_DIR)/openroad/common/dpl_cell_pad.tcl
-    log_cmd detailed_placement -incremental\
-        -max_displacement [subst { $::env(PL_MAX_DISPLACEMENT_X) $::env(PL_MAX_DISPLACEMENT_Y) }]
-    set restored [lln_restore_orientations $block $snapshot]
-    puts "\[INFO\] $restored unmoved cells got their orientation back after detailed placement."
-    check_placement -verbose
+    # Detailed placement resets mirrored orientations and pushes neighbours,
+    # which would rip up their nets: every unchanged instance is made FIRM
+    # while it legalizes the added or resized ones.
+    set locked [list]
+    foreach inst [$block getInsts] {
+        set name [$inst getName]
+        if { ![dict exists $snapshot $name] || [$inst getPlacementStatus] ne "PLACED" } {
+            continue
+        }
+        if { [[$inst getMaster] getName] eq [lindex [dict get $snapshot $name] 3] } {
+            $inst setPlacementStatus FIRM
+            lappend locked $inst
+        }
+    }
+    puts "\[INFO\] [llength $locked] unchanged instances held in place during detailed placement."
 
-    # Mark the nets of every added, resized or moved instance dirty: the
-    # incremental global router rips up their wires and gives them new guides.
-    set changed [lln_changed_instances $block $snapshot]
-    set dirty [lln_signal_nets $changed]
+    # The global router listens before anything moves: the nets of the
+    # repaired instances are marked dirty with their current pins, so that
+    # the buffers legalization moves get guides that reach their new pins.
+    set dirty [lln_signal_nets $repaired]
     log_cmd global_route -start_incremental
     foreach net $dirty {
         foreach iterm [$net getITerms] {
@@ -166,8 +150,21 @@ if { [llength $repaired] == 0 } {
             }
         }
     }
+    source $::env(SCRIPTS_DIR)/openroad/common/dpl_cell_pad.tcl
+    log_cmd detailed_placement -incremental\
+        -max_displacement [subst { $::env(PL_MAX_DISPLACEMENT_X) $::env(PL_MAX_DISPLACEMENT_Y) }]
     log_cmd global_route -end_incremental
-    foreach net $dirty {
+    foreach inst $locked {
+        $inst setPlacementStatus PLACED
+    }
+    check_placement -verbose
+
+    set changed [lln_changed_instances $block $snapshot]
+    set unexpected [expr { [llength $changed] - [llength $repaired] }]
+    if { $unexpected != 0 } {
+        puts "\[WARNING\] $unexpected instances changed besides the repaired ones."
+    }
+    foreach net [lln_signal_nets $changed] {
         set wire [$net getWire]
         if { $wire ne "NULL" } {
             odb::dbWire_destroy $wire
