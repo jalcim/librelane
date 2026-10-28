@@ -87,6 +87,20 @@ proc lln_signal_nets {instances} {
 set block [ord::get_db_block]
 set snapshot [lln_instance_snapshot $block]
 
+# The resizer journal cannot undo a change on a net that carries a non-default
+# rule (ODB-0445): keep such signal nets out of the repair, then release them.
+set ruled_nets [list]
+foreach net [$block getNets] {
+    if { [$net getSigType] in {POWER GROUND CLOCK} || [$net isSpecial] } {
+        continue
+    }
+    if { [$net getNonDefaultRule] ne "NULL" && ![$net isDoNotTouch] } {
+        $net setDoNotTouch 1
+        lappend ruled_nets $net
+    }
+}
+puts "\[INFO\] [llength $ruled_nets] signal nets carrying a non-default rule kept out of the repair."
+
 set hold_args [list]
 lappend hold_args -verbose
 lappend hold_args -hold
@@ -96,6 +110,10 @@ lappend hold_args -max_buffer_percent $::env(DRT_RESIZER_HOLD_MAX_BUFFER_PCT)
 append_if_flag hold_args DRT_RESIZER_ALLOW_SETUP_VIOS -allow_setup_violations
 
 log_cmd repair_timing {*}$hold_args
+
+foreach net $ruled_nets {
+    $net setDoNotTouch 0
+}
 
 # Legalize the inserted buffers incrementally, leaving every legal cell where
 # it is and as it is mirrored, with the global router listening, then mark the
