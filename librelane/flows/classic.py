@@ -76,6 +76,7 @@ class Classic(SequentialFlow):
         OpenROAD.STAMidPNR,
         OpenROAD.ResizerTimingPostCTS,
         OpenROAD.STAMidPNR,
+        OpenROAD.AssignLongNetNDR,
         OpenROAD.GlobalRouting,
         OpenROAD.CheckAntennas,
         OpenROAD.RepairDesignPostGRT,
@@ -167,6 +168,12 @@ class Classic(SequentialFlow):
             "RUN_POST_DRT_RESIZER_TIMING",
             bool,
             "Enables the final hold repair on extracted parasitics after detailed routing, using the OpenROAD.ResizerTimingPostDRT step.",
+            default=False,
+        ),
+        Variable(
+            "RUN_LONG_NET_NDR",
+            bool,
+            "Enables the long net spacing rule before global routing, using the OpenROAD.AssignLongNetNDR step.",
             default=False,
         ),
         Variable(
@@ -279,6 +286,7 @@ class Classic(SequentialFlow):
         "OpenROAD.ResizerTimingPostCTS": ["RUN_POST_CTS_RESIZER_TIMING"],
         "OpenROAD.ResizerTimingPostGRT": ["RUN_POST_GRT_RESIZER_TIMING"],
         "OpenROAD.ResizerTimingPostDRT": ["RUN_POST_DRT_RESIZER_TIMING"],
+        "OpenROAD.AssignLongNetNDR": ["RUN_LONG_NET_NDR"],
         "OpenROAD.CTS": ["RUN_CTS"],
         "OpenROAD.RCX": ["RUN_SPEF_EXTRACTION"],
         "OpenROAD.TapEndcapInsertion": ["RUN_TAP_ENDCAP_INSERTION"],
