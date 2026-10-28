@@ -14,9 +14,11 @@
 
 # Crosstalk mitigation for an open-source flow without signal integrity
 # analysis: every signal net whose pins span a half-perimeter of at least
-# LONG_NET_NDR_MIN_HPWL gets a wider-spacing non-default rule before global
-# routing, so that both routers keep its neighbours further away. Nets that
-# already carry a rule, such as the clock nets given one by CTS, keep it.
+# LONG_NET_NDR_MIN_HPWL gets a wider-spacing non-default rule right before
+# detailed routing, which keeps its neighbours further away. It runs after the
+# last resizer step, whose journal cannot undo a net rule change (ODB-0445).
+# Nets that already carry a rule, such as the clock nets given one by CTS, keep
+# it.
 source $::env(SCRIPTS_DIR)/openroad/common/io.tcl
 read_current_odb
 

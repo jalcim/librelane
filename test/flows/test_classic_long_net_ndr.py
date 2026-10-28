@@ -14,13 +14,15 @@
 import os
 
 
-def test_long_net_rule_comes_right_before_global_routing():
+def test_long_net_rule_comes_after_the_last_resizer_step_before_detailed_routing():
+    # the resizer journal cannot undo a net rule change (ODB-0445), so no
+    # resizer step may run on nets that carry the rule
     from librelane.flows.classic import Classic
 
     ids = [step.id for step in Classic.Steps]
     index = ids.index("OpenROAD.AssignLongNetNDR")
-    assert ids[index + 1] == "OpenROAD.GlobalRouting"
-    assert ids.index("OpenROAD.CTS") < index
+    assert ids[index + 1] == "OpenROAD.DetailedRouting"
+    assert ids.index("OpenROAD.ResizerTimingPostGRT") < index
 
 
 def test_long_net_rule_is_off_by_default():

@@ -76,7 +76,6 @@ class Classic(SequentialFlow):
         OpenROAD.STAMidPNR,
         OpenROAD.ResizerTimingPostCTS,
         OpenROAD.STAMidPNR,
-        OpenROAD.AssignLongNetNDR,
         OpenROAD.GlobalRouting,
         OpenROAD.CheckAntennas,
         OpenROAD.RepairDesignPostGRT,
@@ -85,6 +84,7 @@ class Classic(SequentialFlow):
         OpenROAD.RepairAntennas,
         OpenROAD.ResizerTimingPostGRT,
         OpenROAD.STAMidPNR,
+        OpenROAD.AssignLongNetNDR,
         OpenROAD.DetailedRouting,
         Odb.RemoveRoutingObstructions,
         OpenROAD.CheckAntennas,
@@ -166,7 +166,7 @@ class Classic(SequentialFlow):
         Variable(
             "RUN_LONG_NET_NDR",
             bool,
-            "Enables the long net spacing rule before global routing, using the OpenROAD.AssignLongNetNDR step.",
+            "Enables the long net spacing rule before detailed routing, using the OpenROAD.AssignLongNetNDR step.",
             default=False,
         ),
         Variable(
