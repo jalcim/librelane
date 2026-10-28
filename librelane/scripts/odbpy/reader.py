@@ -15,6 +15,7 @@
 import odb
 from openroad import Tech, Design
 
+import os
 import re
 import sys
 import json
@@ -191,6 +192,14 @@ def click_odb(function):
     @wraps(function)
     def wrapper(input_db, input_lefs, config_path, **kwargs):
         reader = OdbReader(input_db, config_path=config_path)
+        # OpenROAD in python mode never finalizes its logger, and the design the
+        # reader creates no longer sees the -metrics sink: the sink is opened
+        # again here and flushed at the end, by the name the step gives
+        metrics_out = os.environ.get("_LLN_METRICS_OUT")
+        if metrics_out is not None:
+            import utl
+
+            utl.open_metrics(metrics_out)
 
         signature = inspect.signature(function)
         parameter_keys = signature.parameters.keys()
@@ -223,6 +232,9 @@ def click_odb(function):
         for format, path in outputs:
             fn = write_fn[format]
             fn(reader, path)
+
+        if metrics_out is not None:
+            utl.close_metrics(metrics_out)
 
     for format in write_fn:
         wrapper = click.option(
