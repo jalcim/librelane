@@ -192,6 +192,14 @@ def click_odb(function):
     @wraps(function)
     def wrapper(input_db, input_lefs, config_path, **kwargs):
         reader = OdbReader(input_db, config_path=config_path)
+        # OpenROAD in python mode never finalizes its logger, and the design the
+        # reader creates no longer sees the -metrics sink: the sink is opened
+        # again here and flushed at the end, by the name the step gives
+        metrics_out = os.environ.get("_LLN_METRICS_OUT")
+        if metrics_out is not None:
+            import utl
+
+            utl.open_metrics(metrics_out)
 
         signature = inspect.signature(function)
         parameter_keys = signature.parameters.keys()
@@ -225,12 +233,7 @@ def click_odb(function):
             fn = write_fn[format]
             fn(reader, path)
 
-        # OpenROAD in python mode never finalizes its logger, which leaves the
-        # -metrics file unwritten: flush it by the name the step gives
-        metrics_out = os.environ.get("_LLN_METRICS_OUT")
         if metrics_out is not None:
-            import utl
-
             utl.close_metrics(metrics_out)
 
     for format in write_fn:
