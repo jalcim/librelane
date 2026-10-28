@@ -44,6 +44,27 @@ proc lln_instance_key {inst} {
     return [list {*}[$inst getLocation] [$inst getOrient] [[$inst getMaster] getName]]
 }
 
+proc lln_restore_orientations {block snapshot} {
+    # Gives back its orientation to every cell left at its place with its
+    # master, as detailed placement resets mirrored orientations.
+    set restored 0
+    foreach inst [$block getInsts] {
+        set name [$inst getName]
+        if { ![dict exists $snapshot $name] } {
+            continue
+        }
+        lassign [dict get $snapshot $name] x y orient master
+        lassign [$inst getLocation] now_x now_y
+        if { $now_x == $x && $now_y == $y && [[$inst getMaster] getName] eq $master
+             && [$inst getOrient] ne $orient } {
+            $inst setOrient $orient
+            $inst setLocation $x $y
+            incr restored
+        }
+    }
+    return $restored
+}
+
 proc lln_instance_snapshot {block} {
     set snapshot [dict create]
     foreach inst [$block getInsts] {
@@ -115,38 +136,47 @@ foreach net $ruled_nets {
     $net setDoNotTouch 0
 }
 
-# Legalize the inserted buffers incrementally, leaving every legal cell where
-# it is and as it is mirrored, with the global router listening, then mark the
-# nets of every added, resized, moved or flipped instance dirty so they get
-# guides.
-log_cmd global_route -start_incremental
-source $::env(SCRIPTS_DIR)/openroad/common/dpl_cell_pad.tcl
-log_cmd detailed_placement -incremental\
-    -max_displacement [subst { $::env(PL_MAX_DISPLACEMENT_X) $::env(PL_MAX_DISPLACEMENT_Y) }]
-check_placement -verbose
-set changed [lln_changed_instances $block $snapshot]
-set dirty [lln_signal_nets $changed]
-foreach net $dirty {
-    foreach iterm [$net getITerms] {
-        if { [$iterm isOutputSignal] } {
-            $iterm disconnect
-            $iterm connect $net
+set repaired [lln_changed_instances $block $snapshot]
+set changed [list]
+set dirty [list]
+if { [llength $repaired] == 0 } {
+    puts "\[INFO\] The repair changed no instance: placement and routing are left as they are."
+} else {
+    # Legalize the inserted buffers incrementally. Detailed placement resets
+    # the mirrored orientation of cells it does not move, which would rip up
+    # their nets: unmoved cells get their orientation back before the global
+    # router starts listening.
+    source $::env(SCRIPTS_DIR)/openroad/common/dpl_cell_pad.tcl
+    log_cmd detailed_placement -incremental\
+        -max_displacement [subst { $::env(PL_MAX_DISPLACEMENT_X) $::env(PL_MAX_DISPLACEMENT_Y) }]
+    set restored [lln_restore_orientations $block $snapshot]
+    puts "\[INFO\] $restored unmoved cells got their orientation back after detailed placement."
+    check_placement -verbose
+
+    # Mark the nets of every added, resized or moved instance dirty: the
+    # incremental global router rips up their wires and gives them new guides.
+    set changed [lln_changed_instances $block $snapshot]
+    set dirty [lln_signal_nets $changed]
+    log_cmd global_route -start_incremental
+    foreach net $dirty {
+        foreach iterm [$net getITerms] {
+            if { [$iterm isOutputSignal] } {
+                $iterm disconnect
+                $iterm connect $net
+            }
+        }
+    }
+    log_cmd global_route -end_incremental
+    foreach net $dirty {
+        set wire [$net getWire]
+        if { $wire ne "NULL" } {
+            odb::dbWire_destroy $wire
         }
     }
 }
-log_cmd global_route -end_incremental
-
-set ripped 0
-foreach net $dirty {
-    set wire [$net getWire]
-    if { $wire ne "NULL" } {
-        odb::dbWire_destroy $wire
-        incr ripped
-    }
-}
-puts "\[INFO\] [llength $changed] instances added, resized, moved or flipped, $ripped nets ripped up for rerouting."
+puts "\[INFO\] [llength $changed] instances added, resized or moved, [llength $dirty] nets rerouted."
 write_metric_int "route__hold_repair_postdrt__instance__count" [llength $changed]
-write_metric_int "route__hold_repair_postdrt__ripped_net__count" $ripped
+write_metric_int "route__hold_repair_postdrt__rerouted_net__count" [llength $dirty]
 
 unset_dont_touch_objects
 
