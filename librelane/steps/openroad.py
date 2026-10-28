@@ -1841,9 +1841,14 @@ class CheckAntennas(OpenROADStep):
 class AssignLongNetNDR(OpenROADStep):
     """
     Assigns a wider-spacing non-default rule to every signal net whose pins
-    span at least ``LONG_NET_NDR_MIN_HPWL`` of half-perimeter, before global
-    routing, as a crosstalk mitigation where no signal integrity analysis is
-    available. Nets that already carry a non-default rule keep it.
+    span at least ``LONG_NET_NDR_MIN_HPWL`` of half-perimeter, as a crosstalk
+    mitigation where no signal integrity analysis is available. Nets that
+    already carry a non-default rule keep it.
+
+    It runs after the last resizer step and right before detailed routing,
+    because the resizer journal cannot undo a change on a net that carries a
+    rule (ODB-0445): the global routing guides are therefore traced without
+    the rule, which only the detailed router enforces.
     """
 
     id = "OpenROAD.AssignLongNetNDR"
