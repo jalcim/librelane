@@ -86,6 +86,7 @@ class Classic(SequentialFlow):
         OpenROAD.STAMidPNR,
         OpenROAD.DetailedRouting,
         Odb.RemoveRoutingObstructions,
+        OpenROAD.ResizerTimingPostDRT,
         OpenROAD.CheckAntennas,
         Checker.TrDRC,
         Odb.ReportDisconnectedPins,
@@ -161,6 +162,12 @@ class Classic(SequentialFlow):
             "Enables resizer timing optimizations after global routing using the OpenROAD.ResizerTimingPostGRT step. This is experimental and may result in hangs and/or extended run times.",
             default=False,
             deprecated_names=["GLB_RESIZER_TIMING_OPTIMIZATIONS"],
+        ),
+        Variable(
+            "RUN_POST_DRT_RESIZER_TIMING",
+            bool,
+            "Enables the final hold repair on extracted parasitics after detailed routing, using the OpenROAD.ResizerTimingPostDRT step.",
+            default=False,
         ),
         Variable(
             "RUN_HEURISTIC_DIODE_INSERTION",
@@ -271,6 +278,7 @@ class Classic(SequentialFlow):
         "OpenROAD.RepairDesignPostGRT": ["RUN_POST_GRT_DESIGN_REPAIR"],
         "OpenROAD.ResizerTimingPostCTS": ["RUN_POST_CTS_RESIZER_TIMING"],
         "OpenROAD.ResizerTimingPostGRT": ["RUN_POST_GRT_RESIZER_TIMING"],
+        "OpenROAD.ResizerTimingPostDRT": ["RUN_POST_DRT_RESIZER_TIMING"],
         "OpenROAD.CTS": ["RUN_CTS"],
         "OpenROAD.RCX": ["RUN_SPEF_EXTRACTION"],
         "OpenROAD.TapEndcapInsertion": ["RUN_TAP_ENDCAP_INSERTION"],

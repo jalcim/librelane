@@ -2908,6 +2908,89 @@ class ResizerTimingPostGRT(ResizerStep):
         return os.path.join(get_script_dir(), "openroad", "rsz_timing_postgrt.tcl")
 
 
+class _ResizerHoldPostDRT(ResizerStep):
+    """
+    Repairs hold violations on a detailed-routed design, using the parasitics
+    extracted for every resizer corner for untouched nets, then legalizes the
+    inserted buffers incrementally and rips up the nets of every added,
+    resized, moved or flipped instance so that detailed routing reroutes them.
+    """
+
+    id = "OpenROAD.ResizerHoldPostDRT"
+    name = "Hold Repair (Post-Detailed Routing)"
+
+    inputs = [DesignFormat.ODB, DesignFormat.SPEF]
+
+    config_vars = ResizerStep.config_vars + [
+        Variable(
+            "DRT_RESIZER_HOLD_SLACK_MARGIN",
+            Decimal,
+            "Specifies a time margin for the slack when fixing hold violations after detailed routing.",
+            default=0.05,
+            units="ns",
+        ),
+        Variable(
+            "DRT_RESIZER_SETUP_SLACK_MARGIN",
+            Decimal,
+            "Specifies the setup slack margin to preserve when fixing hold violations after detailed routing.",
+            default=0.025,
+            units="ns",
+        ),
+        Variable(
+            "DRT_RESIZER_HOLD_MAX_BUFFER_PCT",
+            Decimal,
+            "Specifies a max number of buffers to insert to fix hold violations after detailed routing, as a percentage of the number of instances in the design.",
+            default=50,
+            units="%",
+        ),
+        Variable(
+            "DRT_RESIZER_ALLOW_SETUP_VIOS",
+            bool,
+            "Allows setup violations when fixing hold after detailed routing.",
+            default=False,
+        ),
+    ]
+
+    def get_script_path(self):
+        return os.path.join(get_script_dir(), "openroad", "rsz_hold_postdrt.tcl")
+
+    def run(self, state_in: State, **kwargs) -> Tuple[ViewsUpdate, MetricsUpdate]:
+        kwargs, env = self.extract_env(kwargs)
+        spefs = state_in.get(DesignFormat.SPEF)
+        if not isinstance(spefs, dict) or len(spefs) == 0:
+            raise StepException(
+                f"{self.id} requires the SPEF files of the RCX step in its input state."
+            )
+        pairs = []
+        for corner in self.config["RSZ_CORNERS"] or self.config["STA_CORNERS"]:
+            found = self.toolbox.filter_views(self.config, spefs, corner)
+            if len(found) != 1:
+                raise StepException(
+                    f"Expected exactly one SPEF for the {corner} corner, found {len(found)}."
+                )
+            pairs.append([corner, str(found[0])])
+        env["_RSZ_SPEFS"] = TclStep.value_to_tcl(pairs)
+        return super().run(state_in, env=env, **kwargs)
+
+
+@Step.factory.register()
+class ResizerTimingPostDRT(CompositeStep):
+    """
+    Final hold repair after detailed routing: extracts parasitics for every
+    RCX corner, repairs hold violations on them, then runs detailed routing
+    again, which keeps the existing routing and reroutes the ripped-up nets.
+
+    The extracted parasitics are not passed on: the flow is expected to run
+    parasitics extraction again afterwards.
+    """
+
+    id = "OpenROAD.ResizerTimingPostDRT"
+    name = "Resizer Hold Repair (Post-Detailed Routing)"
+
+    Steps = [RCX, _ResizerHoldPostDRT, DetailedRouting]
+    outputs = [DesignFormat.ODB, DesignFormat.DEF, DesignFormat.NETLIST, DesignFormat.POWERED_NETLIST]
+
+
 @Step.factory.register()
 class DEFtoODB(OpenROADStep):
     """
