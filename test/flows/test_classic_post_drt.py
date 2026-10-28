@@ -57,3 +57,41 @@ def test_post_drt_hold_repair_script_ships_with_librelane():
     assert os.path.isfile(
         os.path.join(get_script_dir(), "openroad", "rsz_hold_postdrt.tcl")
     )
+
+
+def test_post_drt_hold_repair_leaves_nets_with_a_rule_alone():
+    # the resizer journal cannot undo a change on a net that carries a
+    # non-default rule (ODB-0445): such signal nets are made dont-touch during
+    # the repair, then released
+    from librelane.common import get_script_dir
+
+    with open(
+        os.path.join(get_script_dir(), "openroad", "rsz_hold_postdrt.tcl"),
+        encoding="utf8",
+    ) as f:
+        script = f.read()
+    protect = script.index("setDoNotTouch 1")
+    repair = script.index("log_cmd repair_timing")
+    release = script.index("setDoNotTouch 0")
+    assert protect < repair < release
+    assert "getNonDefaultRule" in script
+
+
+def test_post_drt_hold_repair_keeps_legal_cells_as_they_are():
+    # incremental detailed placement resets mirrored orientations, which would
+    # rip up the nets of every flipped cell: it only runs when the repair
+    # changed something, and unmoved cells get their orientation back
+    from librelane.common import get_script_dir
+
+    with open(
+        os.path.join(get_script_dir(), "openroad", "rsz_hold_postdrt.tcl"),
+        encoding="utf8",
+    ) as f:
+        script = f.read()
+    assert "lln_restore_orientations" in script
+    placement = script.index("detailed_placement -incremental")
+    assert script.index("if { [llength $repaired] == 0 }") < placement
+    assert placement < script.index("lln_restore_orientations $block $snapshot")
+    assert script.index("lln_restore_orientations $block $snapshot") < script.index(
+        "log_cmd global_route -start_incremental"
+    )
