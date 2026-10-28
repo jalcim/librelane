@@ -2527,6 +2527,11 @@ class CTS(OpenROADStep):
                 "Applies 2X spacing non-default rule to clock nets except leaf-level nets following some strategy. There are four strategy options: 'none', 'root_only', 'half', 'full'.",
                 default="half",
             ),
+            Variable(
+                "CTS_SKIP_NETS",
+                Optional[List[str]],
+                "Clock nets that clock tree synthesis leaves untouched, passed to set_cts_config -skip_nets. A root clock net skips its whole clock, any other net only itself. Its sinks stay on that net, and the net still takes part in latency balancing unless it is the source of its own clock in the SDC.",
+            ),
         ]
     )
 

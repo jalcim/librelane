@@ -86,6 +86,12 @@ if { [info exists ::env(CTS_DELAY_BUFFER_DERATE_PCT)] } {
     lappend arg_list -delay_buffer_derate [expr $::env(CTS_DELAY_BUFFER_DERATE_PCT) / 100]
 }
 
+# Clock nets left out of CTS (set_cts_config -skip_nets): a root clock net skips the whole clock, a subnet only
+# itself. clock_tree_synthesis does not take the option, set_cts_config does.
+if { [info exists ::env(CTS_SKIP_NETS)] } {
+    log_cmd set_cts_config -skip_nets $::env(CTS_SKIP_NETS)
+}
+
 log_cmd clock_tree_synthesis {*}$arg_list
 
 set_propagated_clock [all_clocks]
