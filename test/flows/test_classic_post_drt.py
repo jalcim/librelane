@@ -13,6 +13,8 @@
 # limitations under the License.
 import os
 
+import pytest
+
 
 def test_post_drt_hold_repair_follows_detailed_routing():
     from librelane.flows.classic import Classic
@@ -114,3 +116,48 @@ def test_post_drt_hold_repair_falls_back_to_moving_neighbours():
     second = script.index("detailed_placement -incremental", check)
     end = script.index("log_cmd global_route -end_incremental")
     assert unlock < check < second < end
+
+
+@pytest.mark.parametrize("changed, rerouted", [(0, False), (5, True)])
+def test_post_drt_hold_repair_reroutes_only_when_something_changed(
+    monkeypatch, changed, rerouted
+):
+    # rerouting a design the repair left untouched still costs most of a
+    # detailed routing run: the composite step stops after the repair then
+    from librelane.steps import OpenROAD
+    from librelane.state import State
+
+    calls = []
+
+    class Fake:
+        def __init__(self, config, state):
+            self.id = type(self).id
+            self.state = state
+
+        def start(self, **kwargs):
+            calls.append(self.id)
+            return State(self.state, metrics=type(self).metrics)
+
+    def fake(step_id, metrics):
+        return type(step_id, (Fake,), {"id": step_id, "metrics": metrics})
+
+    step = OpenROAD.ResizerTimingPostDRT
+    monkeypatch.setattr(
+        step,
+        "Steps",
+        [
+            fake("OpenROAD.RCX", {}),
+            fake(
+                "OpenROAD.ResizerHoldPostDRT",
+                {"route__hold_repair_postdrt__instance__count": changed},
+            ),
+            fake("OpenROAD.DetailedRouting", {}),
+        ],
+    )
+    instance = object.__new__(step)
+    instance.config = {}
+    instance.step_dir = "/nonexistent"
+    instance.toolbox = None
+    step.run(instance, State())
+    expected = ["OpenROAD.RCX", "OpenROAD.ResizerHoldPostDRT"]
+    assert calls == expected + (["OpenROAD.DetailedRouting"] if rerouted else [])

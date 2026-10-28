@@ -56,6 +56,7 @@ from ..common import (
     get_script_dir,
     mkdirp,
     process_list_file,
+    slugify,
 )
 from ..config import Macro, Variable
 from ..config.flow import option_variables
@@ -3026,6 +3027,38 @@ class ResizerTimingPostDRT(CompositeStep):
 
     Steps = [RCX, _ResizerHoldPostDRT, DetailedRouting]
     outputs = [DesignFormat.ODB, DesignFormat.DEF, DesignFormat.NETLIST, DesignFormat.POWERED_NETLIST]
+
+    def run(self, state_in: State, **kwargs) -> Tuple[ViewsUpdate, MetricsUpdate]:
+        # Rerouting a design the repair left untouched still costs most of a
+        # detailed routing run: stop after the repair when it changed nothing.
+        state = state_in
+        ordinal_length = len(str(len(self.Steps) - 1))
+        for i, StepClass in enumerate(self.Steps):
+            if (
+                StepClass.id == DetailedRouting.id
+                and state.metrics.get("route__hold_repair_postdrt__instance__count")
+                == 0
+            ):
+                info("The hold repair changed no instance, detailed routing is kept.")
+                break
+            step = StepClass(self.config, state)
+            step_dir = os.path.join(
+                self.step_dir, f"{str(i + 1).zfill(ordinal_length)}-{slugify(step.id)}"
+            )
+            state = step.start(toolbox=self.toolbox, step_dir=step_dir, _no_rule=True)
+
+        views_updates: dict = {}
+        metrics_updates: dict = {}
+        for key in state:
+            if (
+                state_in.get(key) != state.get(key)
+                and DesignFormat.factory.get(key) in self.outputs
+            ):
+                views_updates[key] = state[key]
+        for key in state.metrics:
+            if state_in.metrics.get(key) != state.metrics.get(key):
+                metrics_updates[key] = state.metrics[key]
+        return views_updates, metrics_updates
 
 
 @Step.factory.register()
