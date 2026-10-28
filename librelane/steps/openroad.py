@@ -1839,6 +1839,43 @@ class CheckAntennas(OpenROADStep):
 
 
 @Step.factory.register()
+class AssignLongNetNDR(OpenROADStep):
+    """
+    Assigns a wider-spacing non-default rule to every signal net whose pins
+    span at least ``LONG_NET_NDR_MIN_HPWL`` of half-perimeter, as a crosstalk
+    mitigation where no signal integrity analysis is available. Nets that
+    already carry a non-default rule keep it.
+
+    It runs after the last resizer step and right before detailed routing,
+    because the resizer journal cannot undo a change on a net that carries a
+    rule (ODB-0445): the global routing guides are therefore traced without
+    the rule, which only the detailed router enforces.
+    """
+
+    id = "OpenROAD.AssignLongNetNDR"
+    name = "Long Net Spacing Rule"
+
+    config_vars = OpenROADStep.config_vars + [
+        Variable(
+            "LONG_NET_NDR_MIN_HPWL",
+            Decimal,
+            "Minimum half-perimeter of the pins of a signal net for it to get the long net spacing rule.",
+            default=1000,
+            units="µm",
+        ),
+        Variable(
+            "LONG_NET_NDR_SPACING",
+            str,
+            "Spacing of the long net rule, as accepted by create_ndr: a value in µm, a multiple of the default spacing such as '*2', or layer and value pairs.",
+            default="*2",
+        ),
+    ]
+
+    def get_script_path(self):
+        return os.path.join(get_script_dir(), "openroad", "assign_long_net_ndr.tcl")
+
+
+@Step.factory.register()
 class GlobalRouting(OpenROADStep):
     """
     The initial phase of routing. Given a detailed-placed ODB file, this
