@@ -76,6 +76,7 @@ class Classic(SequentialFlow):
         OpenROAD.STAMidPNR,
         OpenROAD.ResizerTimingPostCTS,
         OpenROAD.STAMidPNR,
+        OpenROAD.AssignLongNetNDR,
         OpenROAD.GlobalRouting,
         OpenROAD.CheckAntennas,
         OpenROAD.RepairDesignPostGRT,
@@ -161,6 +162,12 @@ class Classic(SequentialFlow):
             "Enables resizer timing optimizations after global routing using the OpenROAD.ResizerTimingPostGRT step. This is experimental and may result in hangs and/or extended run times.",
             default=False,
             deprecated_names=["GLB_RESIZER_TIMING_OPTIMIZATIONS"],
+        ),
+        Variable(
+            "RUN_LONG_NET_NDR",
+            bool,
+            "Enables the long net spacing rule before global routing, using the OpenROAD.AssignLongNetNDR step.",
+            default=False,
         ),
         Variable(
             "RUN_HEURISTIC_DIODE_INSERTION",
@@ -271,6 +278,7 @@ class Classic(SequentialFlow):
         "OpenROAD.RepairDesignPostGRT": ["RUN_POST_GRT_DESIGN_REPAIR"],
         "OpenROAD.ResizerTimingPostCTS": ["RUN_POST_CTS_RESIZER_TIMING"],
         "OpenROAD.ResizerTimingPostGRT": ["RUN_POST_GRT_RESIZER_TIMING"],
+        "OpenROAD.AssignLongNetNDR": ["RUN_LONG_NET_NDR"],
         "OpenROAD.CTS": ["RUN_CTS"],
         "OpenROAD.RCX": ["RUN_SPEF_EXTRACTION"],
         "OpenROAD.TapEndcapInsertion": ["RUN_TAP_ENDCAP_INSERTION"],
