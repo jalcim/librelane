@@ -1,0 +1,59 @@
+# Copyright 2026 The LibreLane Contributors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import os
+
+
+def test_post_drt_hold_repair_follows_detailed_routing():
+    from librelane.flows.classic import Classic
+
+    ids = [step.id for step in Classic.Steps]
+    index = ids.index("OpenROAD.ResizerTimingPostDRT")
+    assert ids[index - 2 : index] == [
+        "OpenROAD.DetailedRouting",
+        "Odb.RemoveRoutingObstructions",
+    ]
+    assert ids.index("OpenROAD.RCX") > index
+
+
+def test_post_drt_hold_repair_is_off_by_default():
+    from librelane.flows.classic import Classic
+
+    variable = next(
+        var for var in Classic.config_vars if var.name == "RUN_POST_DRT_RESIZER_TIMING"
+    )
+    assert variable.default is False
+    assert Classic.gating_config_vars["OpenROAD.ResizerTimingPostDRT"] == [
+        "RUN_POST_DRT_RESIZER_TIMING"
+    ]
+
+
+def test_post_drt_hold_repair_extracts_repairs_and_reroutes():
+    from librelane.state import DesignFormat
+    from librelane.steps import OpenROAD
+
+    step = OpenROAD.ResizerTimingPostDRT
+    assert [inner.id for inner in step.Steps] == [
+        "OpenROAD.RCX",
+        "OpenROAD.ResizerHoldPostDRT",
+        "OpenROAD.DetailedRouting",
+    ]
+    assert DesignFormat.SPEF not in step.outputs
+
+
+def test_post_drt_hold_repair_script_ships_with_librelane():
+    from librelane.common import get_script_dir
+
+    assert os.path.isfile(
+        os.path.join(get_script_dir(), "openroad", "rsz_hold_postdrt.tcl")
+    )
