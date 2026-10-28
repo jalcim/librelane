@@ -95,4 +95,22 @@ def test_post_drt_hold_repair_only_legalizes_what_it_changed():
     placement = script.index("detailed_placement -incremental")
     end = script.index("log_cmd global_route -end_incremental")
     unlock = script.index("setPlacementStatus PLACED")
-    assert guard < lock < start < placement < end < unlock
+    assert guard < lock < start < placement < unlock < end
+
+
+def test_post_drt_hold_repair_falls_back_to_moving_neighbours():
+    # in a dense block the held cells may leave no room for the buffers: the
+    # placement is then redone with every cell free, still while the global
+    # router listens
+    from librelane.common import get_script_dir
+
+    with open(
+        os.path.join(get_script_dir(), "openroad", "rsz_hold_postdrt.tcl"),
+        encoding="utf8",
+    ) as f:
+        script = f.read()
+    unlock = script.index("setPlacementStatus PLACED")
+    check = script.index("catch { check_placement")
+    second = script.index("detailed_placement -incremental", check)
+    end = script.index("log_cmd global_route -end_incremental")
+    assert unlock < check < second < end
