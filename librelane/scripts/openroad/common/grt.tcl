@@ -24,6 +24,8 @@ set arg_list [list]
 lappend arg_list -congestion_iterations $::env(GRT_OVERFLOW_ITERS)
 lappend arg_list -verbose
 append_if_flag arg_list GRT_ALLOW_CONGESTION -allow_congestion
+append_if_flag arg_list GRT_RESISTANCE_AWARE -resistance_aware
+append_if_exists_argument arg_list GRT_RES_AWARE_NETS_PERCENTAGE -res_aware_nets_percentage
 
 log_cmd global_route {*}$arg_list
 

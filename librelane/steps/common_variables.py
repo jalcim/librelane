@@ -403,6 +403,18 @@ grt_variables = routing_layer_variables + [
         default=False,
     ),
     Variable(
+        "GRT_RESISTANCE_AWARE",
+        bool,
+        "Passes -resistance_aware to every global_route call, so that negative-slack nets are steered toward low-resistance layers and vias. It stays in effect for the incremental routing the resizer runs within the same step, but not for antenna repair, which runs in its own process. OpenROAD states that this mode is not ready for production.",
+        default=False,
+    ),
+    Variable(
+        "GRT_RES_AWARE_NETS_PERCENTAGE",
+        Optional[Decimal],
+        "Fixed percentage of the nets that resistance-aware global routing handles, passed to global_route -res_aware_nets_percentage. If unset, OpenROAD steps through 15, 30, then 100. Without GRT_RESISTANCE_AWARE, OpenROAD resets it to 0 (GRT-0308).",
+        units="%",
+    ),
+    Variable(
         "GRT_ANTENNA_REPAIR_ITERS",
         int,
         "The maximum number of iterations for global antenna repairs.",
