@@ -2527,6 +2527,12 @@ class CTS(OpenROADStep):
                 "Applies 2X spacing non-default rule to clock nets except leaf-level nets following some strategy. There are four strategy options: 'none', 'root_only', 'half', 'full'.",
                 default="half",
             ),
+            Variable(
+                "CTS_REPAIR_CLOCK_NETS_IN_CTS",
+                bool,
+                "Passes -repair_clock_nets to clock_tree_synthesis, so that TritonCTS repairs long clock wires before it balances latencies with delay buffers. That repair uses the resizer's own maximum wire length, not CTS_CLK_MAX_WIRE_LENGTH, so the repair_clock_nets call that follows clock tree synthesis still runs.",
+                default=False,
+            ),
         ]
     )
 

@@ -86,6 +86,9 @@ if { [info exists ::env(CTS_DELAY_BUFFER_DERATE_PCT)] } {
     lappend arg_list -delay_buffer_derate [expr $::env(CTS_DELAY_BUFFER_DERATE_PCT) / 100]
 }
 
+# The repair inside CTS takes the resizer's maximum wire length, CTS_CLK_MAX_WIRE_LENGTH is enforced below.
+append_if_flag arg_list CTS_REPAIR_CLOCK_NETS_IN_CTS -repair_clock_nets
+
 log_cmd clock_tree_synthesis {*}$arg_list
 
 set_propagated_clock [all_clocks]
