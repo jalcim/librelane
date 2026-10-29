@@ -54,6 +54,9 @@ if { [info exists ::env(PL_ROUTABILITY_DRIVEN)] && $::env(PL_ROUTABILITY_DRIVEN)
 	if { [info exists ::env(PL_ROUTABILITY_OVERFLOW_THRESHOLD)] } {
 		lappend arg_list -routability_check_overflow $::env(PL_ROUTABILITY_OVERFLOW_THRESHOLD)
 	}
+	append_if_exists_argument arg_list PL_ROUTABILITY_INFLATION_RATIO_COEF -routability_inflation_ratio_coef
+} elseif { [info exists ::env(PL_ROUTABILITY_INFLATION_RATIO_COEF)] } {
+	puts "\[WARNING\] PL_ROUTABILITY_INFLATION_RATIO_COEF is ignored: PL_ROUTABILITY_DRIVEN is off."
 }
 
 if { $::env(PL_SKIP_INITIAL_PLACEMENT) } {

@@ -1616,6 +1616,11 @@ class GlobalPlacement(_GlobalPlacement):
             Optional[Decimal],
             "Sets overflow threshold for routability mode.",
         ),
+        Variable(
+            "PL_ROUTABILITY_INFLATION_RATIO_COEF",
+            Optional[Decimal],
+            "Exponent of the cell inflation that routability-driven placement applies to congested tiles, passed to global_placement -routability_inflation_ratio_coef. If unset, OpenROAD uses 2. Only used when PL_ROUTABILITY_DRIVEN is set.",
+        ),
     ]
 
 
