@@ -16,6 +16,7 @@ from decimal import Decimal
 from typing import Optional
 
 WARNING = "PL_ROUTABILITY_INFLATION_RATIO_COEF is ignored: PL_ROUTABILITY_DRIVEN is off."
+ELSE_BRANCH = "} elseif { [info exists ::env(PL_ROUTABILITY_INFLATION_RATIO_COEF)] } {"
 
 
 def _script(name):
@@ -57,9 +58,11 @@ def test_placement_script_passes_it_in_routability_mode():
         "append_if_exists_argument arg_list PL_ROUTABILITY_INFLATION_RATIO_COEF -routability_inflation_ratio_coef"
     )
     assert mode < option < script.index("log_cmd global_placement {*}$arg_list")
+    assert option < script.index(ELSE_BRANCH)
 
 
 def test_placement_script_warns_when_routability_is_off():
     script = _script("gpl.tcl")
     option = script.index("PL_ROUTABILITY_INFLATION_RATIO_COEF -routability_inflation_ratio_coef")
     assert option < script.index(WARNING) < script.index("log_cmd global_placement")
+    assert script.index(ELSE_BRANCH) < script.index(WARNING)
