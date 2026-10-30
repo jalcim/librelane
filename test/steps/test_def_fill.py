@@ -11,9 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import Optional
 
 import pytest
 
@@ -34,6 +37,14 @@ FILLS 4 ;
 END FILLS
 END DESIGN
 """
+
+
+def _without(*prefixes: str) -> str:
+    return "".join(
+        line
+        for line in _DEF.splitlines(keepends=True)
+        if not line.strip().startswith(prefixes)
+    )
 
 
 def _write(path: Path, text: str) -> Path:
@@ -72,6 +83,31 @@ def _stream_out(tmp_path: Path) -> Path:
     return gds
 
 
+def _run_tclsh(step_dir: Path, def_in: Path) -> subprocess.CompletedProcess:
+    tclsh = shutil.which("tclsh")
+    if tclsh is None:
+        pytest.skip("tclsh not found")
+    read_tcl = SCRIPTS / "magic" / "common" / "read.tcl"
+    script = _write(
+        step_dir / "tcl" / "run.tcl",
+        f"source {{{read_tcl}}}\nputs [def_without_fills {{{def_in}}}]\n",
+    )
+    return subprocess.run(
+        [tclsh, str(script)],
+        capture_output=True,
+        text=True,
+        env={**os.environ, "STEP_DIR": str(step_dir)},
+    )
+
+
+def _def_without_fills(tmp_path: Path, source: Optional[Path] = None) -> Path:
+    if source is None:
+        source = _write(tmp_path / "source" / "filled.def", _DEF)
+    result = _run_tclsh(tmp_path, source)
+    assert result.returncode == 0, result.stderr
+    return Path(result.stdout.splitlines()[-1])
+
+
 def test_stream_out_keeps_the_def_fill_cell(tmp_path: Path):
     kdb = pytest.importorskip("klayout.db")
     gds = _stream_out(tmp_path)
@@ -82,3 +118,27 @@ def test_stream_out_keeps_the_def_fill_cell(tmp_path: Path):
     metal2_fill = layout.find_layer(10, 22)
     count = 0 if metal2_fill is None else fill.shapes(metal2_fill).size()
     assert count == 4
+
+
+def test_read_def_leaves_the_fills_section_out(tmp_path: Path):
+    copy = _def_without_fills(tmp_path)
+    text = copy.read_text(encoding="utf-8")
+    assert copy.parent == tmp_path
+    assert "FILLS" not in text
+    assert "DIEAREA ( 0 0 ) ( 100000 100000 ) ;" in text
+    assert text.endswith("END DESIGN\n")
+
+
+def test_read_def_keeps_a_def_without_fills(tmp_path: Path):
+    source = _write(
+        tmp_path / "source" / "plain.def", _without("FILLS", "- LAYER", "END FILLS")
+    )
+    assert _def_without_fills(tmp_path, source) == source
+    assert not list(tmp_path.glob("*.nofills.def"))
+
+
+def test_an_unclosed_fills_section_stops_magic(tmp_path: Path):
+    source = _write(tmp_path / "source" / "unclosed.def", _without("END FILLS"))
+    result = _run_tclsh(tmp_path, source)
+    assert result.returncode == 1
+    assert "never closes it" in result.stderr

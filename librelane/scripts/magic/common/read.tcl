@@ -135,9 +135,29 @@ proc read_pad_gds {} {
     gds readonly $old_readonly
 }
 
+proc def_without_fills {def_in} {
+    set handle [open $def_in r]
+    set text [read $handle]
+    close $handle
+    if { ![regexp -line -indices {^[ \t]*FILLS[ \t]+[0-9]+[ \t]*;} $text start] } {
+        return $def_in
+    }
+    if { ![regexp -line -indices -start [lindex $start 0] {^[ \t]*END[ \t]+FILLS[ \t]*$} $text end] } {
+        puts stderr "\[ERROR\] $def_in opens a FILLS section and never closes it."
+        exit 1
+    }
+    set out_path [file join $::env(STEP_DIR) "[file rootname [file tail $def_in]].nofills.def"]
+    set out [open $out_path w]
+    puts -nonewline $out [string range $text 0 [expr {[lindex $start 0] - 1}]]
+    puts -nonewline $out [string range $text [expr {[lindex $end 1] + 2}] end]
+    close $out
+    puts "> FILLS section of $def_in left out, magic reads $out_path"
+    return $out_path
+}
+
 proc read_def {} {
     set def_read_args [list]
-    lappend def_read_args $::env(CURRENT_DEF)
+    lappend def_read_args [def_without_fills $::env(CURRENT_DEF)]
     if { $::env(MAGIC_DEF_NO_BLOCKAGES) } {
         lappend def_read_args -noblockage
     }
