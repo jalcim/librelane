@@ -405,7 +405,7 @@ grt_variables = routing_layer_variables + [
     Variable(
         "GRT_CRITICAL_NETS_PERCENTAGE",
         Optional[Decimal],
-        "Percentage of the nets with the worst slack that the global router treats as critical during its congestion iterations, passed to global_route -critical_nets_percentage. If unset, OpenROAD keeps its internal default of 10, although its README states 0. At 0, the router no longer re-estimates parasitics and reads the slack of every net every third iteration, nor rips up the critical nets whose route has grown.",
+        "Percentage of the nets with the worst slack that the global router treats as critical during its congestion iterations, passed to global_route -critical_nets_percentage. If unset, OpenROAD keeps its internal default of 10, although its README states 0. At 0, the router no longer re-estimates parasitics and reads the slack of every net every third iteration, nor rips up the critical nets whose route has at least doubled.",
         units="%",
     ),
     Variable(

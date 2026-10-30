@@ -47,3 +47,4 @@ def test_global_route_script_passes_the_percentage():
         "append_if_exists_argument arg_list GRT_CRITICAL_NETS_PERCENTAGE -critical_nets_percentage"
     )
     assert option < script.index("log_cmd global_route {*}$arg_list")
+    assert script.index("set arg_list [list]") < option
