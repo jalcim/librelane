@@ -16,7 +16,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Sequence
 
 import pytest
 
@@ -39,6 +39,33 @@ END DESIGN
 """
 
 
+def _macro_lef(*names: str) -> str:
+    # No FOREIGN: KLayout then draws the LEF view into the cell, which
+    # stream_out.py must clear like any library cell.
+    macros = "".join(
+        f"MACRO {name}\n"
+        "  CLASS CORE ;\n"
+        "  ORIGIN 0 0 ;\n"
+        "  SIZE 4 BY 4 ;\n"
+        "  PIN A\n"
+        "    DIRECTION INPUT ;\n"
+        "    PORT\n"
+        "      LAYER Metal2 ;\n"
+        "        RECT 0 0 1 1 ;\n"
+        "    END\n"
+        "  END A\n"
+        "  OBS\n"
+        "    LAYER Metal2 ;\n"
+        "      RECT 2 2 3 3 ;\n"
+        "  END\n"
+        f"END {name}\n"
+        for name in names
+    )
+    return (
+        f'VERSION 5.8 ;\nBUSBITCHARS "[]" ;\nDIVIDERCHAR "/" ;\n{macros}END LIBRARY\n'
+    )
+
+
 def _without(*prefixes: str) -> str:
     return "".join(
         line
@@ -53,12 +80,14 @@ def _write(path: Path, text: str) -> Path:
     return path
 
 
-def _stream_out(tmp_path: Path) -> Path:
+def _stream_out(
+    tmp_path: Path, def_text: str = _DEF, extra: Sequence[str] = ()
+) -> Path:
     if not PDK.is_dir():
         pytest.skip(f"PDK not found: {PDK}")
     tech = PDK / "libs.tech" / "klayout" / "tech"
     tech_lef = PDK / "libs.ref" / "sg13cmos5l_stdcell" / "lef" / "sg13cmos5l_tech.lef"
-    def_in = _write(tmp_path / "filled.def", _DEF)
+    def_in = _write(tmp_path / "filled.def", def_text)
     gds = tmp_path / "filled.gds"
     subprocess.run(
         [
@@ -77,6 +106,7 @@ def _stream_out(tmp_path: Path) -> Path:
             str(tech / "sg13cmos5l.map"),
             "--input-lef",
             str(tech_lef),
+            *extra,
         ],
         check=True,
     )
@@ -118,6 +148,46 @@ def test_stream_out_keeps_the_def_fill_cell(tmp_path: Path):
     metal2_fill = layout.find_layer(10, 22)
     count = 0 if metal2_fill is None else fill.shapes(metal2_fill).size()
     assert count == 4
+
+
+def test_stream_out_clears_a_library_cell_named_like_a_fill_cell(tmp_path: Path):
+    kdb = pytest.importorskip("klayout.db")
+    names = ("spare_DEF_FILL", "spare_twin")
+    library = kdb.Layout()
+    for name in names:
+        cell = library.create_cell(name)
+        cell.shapes(library.layer(10, 0)).insert(kdb.Box(0, 0, 4000, 4000))
+    spare_gds = tmp_path / "spare.gds"
+    library.write(str(spare_gds))
+    spare_lef = _write(tmp_path / "spare.lef", _macro_lef(*names))
+    placed = _DEF.replace(
+        "FILLS 4 ;",
+        "COMPONENTS 2 ;\n"
+        "    - a spare_DEF_FILL + PLACED ( 50000 50000 ) N ;\n"
+        "    - b spare_twin + PLACED ( 60000 50000 ) N ;\n"
+        "END COMPONENTS\n"
+        "FILLS 4 ;",
+    )
+    gds = _stream_out(
+        tmp_path,
+        placed,
+        ["--input-lef", str(spare_lef), "--with-gds-file", str(spare_gds)],
+    )
+    layout = kdb.Layout()
+    layout.read(str(gds))
+    spare, twin = (
+        sorted(
+            (
+                layout.get_info(index).layer,
+                layout.get_info(index).datatype,
+                str(shape.box),
+            )
+            for index in layout.layer_indexes()
+            for shape in layout.cell(name).shapes(index).each()
+        )
+        for name in names
+    )
+    assert spare == twin
 
 
 def test_read_def_leaves_the_fills_section_out(tmp_path: Path):

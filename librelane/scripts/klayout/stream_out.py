@@ -152,7 +152,7 @@ def stream_out(
         print("[INFO] Clearing cells…")
         for i in main_layout.each_cell():
             if i.cell_index() != top_cell_index:
-                if not i.name.startswith("VIA") and not i.name.endswith("_DEF_FILL"):
+                if not i.name.startswith("VIA") and i.name != f"{design_name}_DEF_FILL":
                     i.clear()
 
         # Load in the gds to merge
