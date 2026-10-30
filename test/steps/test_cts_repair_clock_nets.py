@@ -54,3 +54,4 @@ def test_cts_script_passes_the_flag_and_keeps_the_later_repair():
         "repair_clock_nets -max_wire_length $::env(CTS_CLK_MAX_WIRE_LENGTH)"
     )
     assert flag < cts < later
+    assert script.index("set arg_list [list]") < flag
