@@ -35,6 +35,12 @@ FILLS 4 ;
     - LAYER Metal2 RECT ( 20000 0 ) ( 25000 2000 ) ;
     - LAYER Metal2 RECT ( 30000 0 ) ( 35000 2000 ) ;
 END FILLS
+SPECIALNETS 1 ;
+    - FILLS + USE POWER ;
+END SPECIALNETS
+NETS 1 ;
+    - n1 ;
+END NETS
 END DESIGN
 """
 
@@ -72,6 +78,10 @@ def _without(*prefixes: str) -> str:
         for line in _DEF.splitlines(keepends=True)
         if not line.strip().startswith(prefixes)
     )
+
+
+def _without_fills() -> str:
+    return _without("FILLS", "- LAYER", "END FILLS")
 
 
 def _write(path: Path, text: str) -> Path:
@@ -192,17 +202,12 @@ def test_stream_out_clears_a_library_cell_named_like_a_fill_cell(tmp_path: Path)
 
 def test_read_def_leaves_the_fills_section_out(tmp_path: Path):
     copy = _def_without_fills(tmp_path)
-    text = copy.read_text(encoding="utf-8")
     assert copy.parent == tmp_path
-    assert "FILLS" not in text
-    assert "DIEAREA ( 0 0 ) ( 100000 100000 ) ;" in text
-    assert text.endswith("END DESIGN\n")
+    assert copy.read_text(encoding="utf-8") == _without_fills()
 
 
 def test_read_def_keeps_a_def_without_fills(tmp_path: Path):
-    source = _write(
-        tmp_path / "source" / "plain.def", _without("FILLS", "- LAYER", "END FILLS")
-    )
+    source = _write(tmp_path / "source" / "plain.def", _without_fills())
     assert _def_without_fills(tmp_path, source) == source
     assert not list(tmp_path.glob("*.nofills.def"))
 
