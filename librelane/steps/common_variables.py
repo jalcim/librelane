@@ -405,7 +405,7 @@ grt_variables = routing_layer_variables + [
     Variable(
         "GRT_RESISTANCE_AWARE",
         bool,
-        "Passes -resistance_aware to every global_route call, so that negative-slack nets are steered toward low-resistance layers and vias. It stays in effect for the incremental routing the resizer runs within the same step, but not for antenna repair, which runs in its own process. OpenROAD states that this mode is not ready for production.",
+        "Passes -resistance_aware to every global_route call, so that negative-slack nets are steered toward low-resistance layers and vias. It stays in effect for the incremental routing the resizer runs within the same step, but not for antenna repair, which runs in its own process, nor for Odb.InsertECOBuffers and Odb.InsertECODiodes, whose incremental routing starts without it. OpenROAD states that this mode is not ready for production.",
         default=False,
     ),
     Variable(

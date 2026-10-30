@@ -55,6 +55,7 @@ def test_global_route_script_passes_both_options():
         "append_if_exists_argument arg_list GRT_RES_AWARE_NETS_PERCENTAGE -res_aware_nets_percentage"
     )
     assert flag < percentage < script.index("log_cmd global_route {*}$arg_list")
+    assert script.index("set arg_list [list]") < flag
 
 
 def test_only_the_common_script_calls_global_route():
