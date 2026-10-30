@@ -142,9 +142,9 @@ proc def_without_fills {def_in} {
     if { ![regexp -line -indices {^[ \t]*FILLS[ \t]+[0-9]+[ \t]*;} $text start] } {
         return $def_in
     }
-    if { ![regexp -line -indices -start [lindex $start 0] {^[ \t]*END[ \t]+FILLS[ \t]*$} $text end] } {
-        puts stderr "\[ERROR\] $def_in opens a FILLS section and never closes it."
-        exit 1
+    if { ![regexp -line -indices -start [lindex $start 0] {^[ \t]*END[ \t]+FILLS[ \t]*(#.*)?$} $text end] } {
+        puts "> FILLS section of $def_in never closes, magic reads it as is"
+        return $def_in
     }
     set out_path [file join $::env(STEP_DIR) "[file rootname [file tail $def_in]].nofills.def"]
     set out [open $out_path w]

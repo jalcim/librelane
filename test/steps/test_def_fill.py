@@ -212,8 +212,17 @@ def test_read_def_keeps_a_def_without_fills(tmp_path: Path):
     assert not list(tmp_path.glob("*.nofills.def"))
 
 
-def test_an_unclosed_fills_section_stops_magic(tmp_path: Path):
+def test_read_def_accepts_a_comment_after_end_fills(tmp_path: Path):
+    source = _write(
+        tmp_path / "source" / "commented.def",
+        _DEF.replace("END FILLS\n", "END FILLS # end of the fill\n"),
+    )
+    copy = _def_without_fills(tmp_path, source)
+    assert copy.parent == tmp_path
+    assert copy.read_text(encoding="utf-8") == _without_fills()
+
+
+def test_an_unclosed_fills_section_is_read_as_is(tmp_path: Path):
     source = _write(tmp_path / "source" / "unclosed.def", _without("END FILLS"))
-    result = _run_tclsh(tmp_path, source)
-    assert result.returncode == 1
-    assert "never closes it" in result.stderr
+    assert _def_without_fills(tmp_path, source) == source
+    assert not list(tmp_path.glob("*.nofills.def"))
