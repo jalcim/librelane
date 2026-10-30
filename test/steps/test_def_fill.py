@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+import resource
 import shutil
+import signal
 import subprocess
 import sys
 from pathlib import Path
@@ -123,7 +125,9 @@ def _stream_out(
     return gds
 
 
-def _run_tclsh(step_dir: Path, def_in: Path) -> subprocess.CompletedProcess:
+def _run_tclsh(
+    step_dir: Path, def_in: Path, file_size_limit: Optional[int] = None
+) -> subprocess.CompletedProcess:
     tclsh = shutil.which("tclsh")
     if tclsh is None:
         pytest.skip("tclsh not found")
@@ -132,11 +136,20 @@ def _run_tclsh(step_dir: Path, def_in: Path) -> subprocess.CompletedProcess:
         step_dir / "tcl" / "run.tcl",
         f"source {{{read_tcl}}}\nputs [def_without_fills {{{def_in}}}]\n",
     )
+
+    def limit_file_size() -> None:
+        if file_size_limit is not None:
+            # SIGXFSZ would kill tclsh. Ignored, the write fails with EFBIG.
+            signal.signal(signal.SIGXFSZ, signal.SIG_IGN)
+            limit = (file_size_limit, file_size_limit)
+            resource.setrlimit(resource.RLIMIT_FSIZE, limit)
+
     return subprocess.run(
         [tclsh, str(script)],
         capture_output=True,
         text=True,
         env={**os.environ, "STEP_DIR": str(step_dir)},
+        preexec_fn=limit_file_size,
     )
 
 
@@ -225,4 +238,18 @@ def test_read_def_accepts_a_comment_after_end_fills(tmp_path: Path):
 def test_an_unclosed_fills_section_is_read_as_is(tmp_path: Path):
     source = _write(tmp_path / "source" / "unclosed.def", _without("END FILLS"))
     assert _def_without_fills(tmp_path, source) == source
+    assert not list(tmp_path.glob("*.nofills.def"))
+
+
+def test_read_def_keeps_crlf_line_endings(tmp_path: Path):
+    source = _write(tmp_path / "source" / "crlf.def", _DEF.replace("\n", "\r\n"))
+    copy = _def_without_fills(tmp_path, source)
+    assert copy.read_bytes() == _without_fills().replace("\n", "\r\n").encode()
+
+
+def test_a_failed_copy_leaves_nothing_in_step_dir(tmp_path: Path):
+    source = _write(tmp_path / "source" / "filled.def", _DEF)
+    result = _run_tclsh(tmp_path, source, file_size_limit=64)
+    assert result.returncode == 0, result.stderr
+    assert Path(result.stdout.splitlines()[-1]) == source
     assert not list(tmp_path.glob("*.nofills.def"))

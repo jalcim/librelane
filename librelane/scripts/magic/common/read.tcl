@@ -136,21 +136,51 @@ proc read_pad_gds {} {
 }
 
 proc def_without_fills {def_in} {
-    set handle [open $def_in r]
-    set text [read $handle]
-    close $handle
-    if { ![regexp -line -indices {^[ \t]*FILLS[ \t]+[0-9]+[ \t]*;} $text start] } {
-        return $def_in
+    set in [open $def_in r]
+    fconfigure $in -translation binary
+    set start -1
+    set stop -1
+    set position 0
+    while { [gets $in line] >= 0 } {
+        if { $start < 0 } {
+            if { [regexp {^[ \t]*FILLS[ \t]+[0-9]+[ \t]*;} $line] } {
+                set start $position
+            }
+        } elseif { [regexp {^[ \t]*END[ \t]+FILLS[ \t\r]*(#.*)?$} $line] } {
+            set stop [tell $in]
+            break
+        }
+        set position [tell $in]
     }
-    if { ![regexp -line -indices -start [lindex $start 0] {^[ \t]*END[ \t]+FILLS[ \t]*(#.*)?$} $text end] } {
-        puts "> FILLS section of $def_in never closes, magic reads it as is"
+    if { $stop < 0 } {
+        close $in
+        if { $start >= 0 } {
+            puts "> FILLS section of $def_in never closes, magic reads it as is"
+        }
         return $def_in
     }
     set out_path [file join $::env(STEP_DIR) "[file rootname [file tail $def_in]].nofills.def"]
-    set out [open $out_path w]
-    puts -nonewline $out [string range $text 0 [expr {[lindex $start 0] - 1}]]
-    puts -nonewline $out [string range $text [expr {[lindex $end 1] + 2}] end]
-    close $out
+    set out ""
+    set failed [catch {
+        set out [open $out_path w]
+        fconfigure $out -translation binary
+        if { $start > 0 } {
+            seek $in 0
+            fcopy $in $out -size $start
+        }
+        seek $in $stop
+        fcopy $in $out
+        close $out
+    } message]
+    close $in
+    if { $failed } {
+        if { $out ne "" } {
+            catch {close $out}
+            catch {file delete $out_path}
+        }
+        puts "> FILLS section of $def_in kept, writing $out_path failed: $message"
+        return $def_in
+    }
     puts "> FILLS section of $def_in left out, magic reads $out_path"
     return $out_path
 }
