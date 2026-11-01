@@ -100,20 +100,19 @@ def test_global_route_script_sets_the_random_router_only_with_a_seed():
     )
 
 
-def test_detailed_routing_seed_keeps_42():
+def test_detailed_routing_seeds_are_unset_by_default():
     from librelane.steps import OpenROAD
 
-    seed = _variable(OpenROAD.DetailedRouting, "DRT_OR_SEED")
-    assert seed.type == int
-    assert seed.default == 42
-    or_k = _variable(OpenROAD.DetailedRouting, "DRT_OR_K")
-    assert or_k.type == Optional[Decimal]
-    assert or_k.default is None
+    for name, kind in [("DRT_OR_SEED", Optional[int]), ("DRT_OR_K", Optional[Decimal])]:
+        variable = _variable(OpenROAD.DetailedRouting, name)
+        assert variable.type == kind
+        assert variable.default is None
 
 
-def test_detailed_route_script_passes_the_seed():
+def test_detailed_route_script_drops_the_hard_coded_42():
     script = _script("drt.tcl")
     assert "-or_seed 42" not in script
-    seed = script.index("lappend drt_args -or_seed $::env(DRT_OR_SEED)")
+    assert "lappend drt_args -or_seed" not in script
+    seed = script.index("append_if_exists_argument drt_args DRT_OR_SEED -or_seed")
     or_k = script.index("append_if_exists_argument drt_args DRT_OR_K -or_k")
     assert seed < or_k < script.index("drt_run $i {*}$drt_args")

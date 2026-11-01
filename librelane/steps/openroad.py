@@ -2000,9 +2000,8 @@ class DetailedRouting(OpenROADStep):
             ),
             Variable(
                 "DRT_OR_SEED",
-                int,
-                "Seed of the random reordering of the nets to reroute in the first search-and-repair iteration of detailed routing, passed as `detailed_route -or_seed`. It only has an effect when DRT_OR_K is greater than 0.",
-                default=42,
+                Optional[int],
+                "Seed of the random reordering of the nets to reroute in the first search-and-repair iteration of detailed routing, passed as `detailed_route -or_seed`. It only has an effect when DRT_OR_K is greater than 0. If not set, the option is not passed and OpenROAD keeps its default (-1).",
             ),
             Variable(
                 "DRT_OR_K",
