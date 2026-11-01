@@ -25,6 +25,15 @@ lappend arg_list -congestion_iterations $::env(GRT_OVERFLOW_ITERS)
 lappend arg_list -verbose
 append_if_flag arg_list GRT_ALLOW_CONGESTION -allow_congestion
 
+if { [info exists ::env(GRT_RANDOM_SEED)] } {
+    set random_args [list -seed $::env(GRT_RANDOM_SEED)]
+    append_if_exists_argument random_args GRT_CAPACITY_PERTURBATION_PCT -capacities_perturbation_percentage
+    append_if_exists_argument random_args GRT_PERTURBATION_AMOUNT -perturbation_amount
+    log_cmd set_global_routing_random {*}$random_args
+} elseif { [info exists ::env(GRT_CAPACITY_PERTURBATION_PCT)] || [info exists ::env(GRT_PERTURBATION_AMOUNT)] } {
+    puts "\[WARNING\] GRT_CAPACITY_PERTURBATION_PCT and GRT_PERTURBATION_AMOUNT are ignored: GRT_RANDOM_SEED is unset."
+}
+
 log_cmd global_route {*}$arg_list
 
 write_guides $::env(STEP_DIR)/after_grt.guide

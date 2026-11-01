@@ -78,6 +78,9 @@ lappend arg_list -pad_right $cell_pad_side
 lappend arg_list -pad_left $cell_pad_side
 lappend arg_list -init_wirelength_coef $::env(PL_WIRE_LENGTH_COEF)
 append_if_exists_argument arg_list PL_KEEP_RESIZE_BELOW_OVERFLOW -keep_resize_below_overflow
+append_if_exists_argument arg_list PL_RANDOM_SEED -random_seed
+append_if_exists_argument arg_list PL_PERTURB_DIST -perturb_dist
+append_if_exists_argument arg_list PL_FILLER_SEED -filler_seed
 
 log_cmd global_placement {*}$arg_list
 

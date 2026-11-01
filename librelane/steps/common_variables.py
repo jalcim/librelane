@@ -403,6 +403,22 @@ grt_variables = routing_layer_variables + [
         default=False,
     ),
     Variable(
+        "GRT_RANDOM_SEED",
+        Optional[int],
+        "Seed of the global router, passed as `set_global_routing_random -seed` before each `global_route`. A non-zero seed shuffles the order in which the nets are routed, with or without capacity perturbation, and 0 keeps the original order. If not set, `set_global_routing_random` is not called.",
+    ),
+    Variable(
+        "GRT_CAPACITY_PERTURBATION_PCT",
+        Optional[Decimal],
+        "Percentage of the global routing grid edges whose capacity is perturbed, passed as `set_global_routing_random -capacities_perturbation_percentage`. Only used when GRT_RANDOM_SEED is set. If not set, no capacity is perturbed.",
+        units="%",
+    ),
+    Variable(
+        "GRT_PERTURBATION_AMOUNT",
+        Optional[int],
+        "Number of tracks added to or subtracted from each perturbed edge capacity, passed as `set_global_routing_random -perturbation_amount`. Only used when GRT_RANDOM_SEED is set. If not set, OpenROAD uses 1.",
+    ),
+    Variable(
         "GRT_ANTENNA_REPAIR_ITERS",
         int,
         "The maximum number of iterations for global antenna repairs.",
