@@ -1563,6 +1563,22 @@ class _GlobalPlacement(OpenROADStep):
                 Optional[Decimal],
                 "Only applicable when PL_TIMING_DRIVEN is enabled. When the overflow is below the set value, timing-driven iterations will retain the resizer changes instead of reverting them. Allowed values are 0 to 1. If not set, a nonzero default value from OpenROAD will be used",
             ),
+            Variable(
+                "PL_RANDOM_SEED",
+                Optional[int],
+                "Seed of the random offsets applied to the initial cell positions at the start of global placement, passed as `global_placement -random_seed`. If not set, the option is not passed and OpenROAD uses its default seed (1).",
+            ),
+            Variable(
+                "PL_PERTURB_DIST",
+                Optional[Decimal],
+                "Radius of the random offsets applied to the initial cell positions at the start of global placement, passed as `global_placement -perturb_dist`: 99.5% of the offsets fall within it, and 0 disables them. If not set, the option is not passed and OpenROAD uses the smaller of 0.5 µm and one row height.",
+                units="nm",
+            ),
+            Variable(
+                "PL_FILLER_SEED",
+                Optional[int],
+                "Seed of the random initial positions of the filler cells of global placement, passed as `global_placement -filler_seed`, an option that requires an OpenROAD build providing it. If not set, the option is not passed and OpenROAD keeps its fixed seed (0).",
+            ),
         ]
     )
 
@@ -1981,6 +1997,17 @@ class DetailedRouting(OpenROADStep):
                 "DRT_SAVE_DRC_REPORT_ITERS",
                 Optional[int],
                 "Write a DRC report every N iterations. If DRT_SAVE_SNAPSHOTS is enabled, there is an implicit default value of 1.",
+            ),
+            Variable(
+                "DRT_OR_SEED",
+                int,
+                "Seed of the random reordering of the nets to reroute in the first search-and-repair iteration of detailed routing, passed as `detailed_route -or_seed`. It only has an effect when DRT_OR_K is greater than 0.",
+                default=42,
+            ),
+            Variable(
+                "DRT_OR_K",
+                Optional[Decimal],
+                "Fraction of the nets to reroute that are swapped with a neighbour in the first search-and-repair iteration of detailed routing, passed as `detailed_route -or_k`. A value greater than 0 enables the reordering seeded by DRT_OR_SEED. If not set, the option is not passed and OpenROAD keeps its default (0, no reordering).",
             ),
             Variable(
                 "NON_DEFAULT_RULES",

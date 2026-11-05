@@ -86,7 +86,8 @@ set i 0
 
 set drt_args [list]
 lappend drt_args -droute_end_iter $::env(DRT_OPT_ITERS)
-lappend drt_args -or_seed 42
+lappend drt_args -or_seed $::env(DRT_OR_SEED)
+append_if_exists_argument drt_args DRT_OR_K -or_k
 lappend drt_args -verbose 1
 lappend drt_args {*}$drc_report_iter_step_arg
 drt_run $i {*}$drt_args
